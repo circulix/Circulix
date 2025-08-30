@@ -1,0 +1,50 @@
+name: Circulix - Build & Evaluate (CIRA, Cold-Region)
+
+on:
+  workflow_dispatch: {}
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install pandas numpy scikit-learn matplotlib joblib
+
+      - name: Prepare folders
+        run: |
+          mkdir -p data/processed models
+
+      - name: Map CIRA CSV to project schema
+        run: |
+          python scripts/read_map_cira.py
+
+      # اگر اسامی اسکریپت‌های شما فرق دارد، فقط همین سه خط را با نام‌های خودتان عوض کنید
+      - name: Preprocess
+        run: |
+          python src/preprocess.py --in_dir data/processed --out_dir data/processed
+
+      - name: Train
+        run: |
+          python src/train.py --data data/processed/combined_cira.csv --out_dir models
+
+      - name: Evaluate
+        run: |
+          python src/evaluate.py --test data/processed/combined_cira.csv --model_dir models --out_dir models
+
+      - name: Upload artifacts (CSV + reports + models)
+        uses: actions/upload-artifact@v4
+        with:
+          name: circulix_outputs
+          path: |
+            data/processed/combined_cira.csv
+            models/**
